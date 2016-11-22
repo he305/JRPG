@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<enemies>
+  
+  <Enemy name="Zombie">
+    <HP>20</HP>
+    <Attack>1</Attack>
+    <Sprite>enemy_0</Sprite>
+  </Enemy>
+  
+  <Enemy name="Skeleton">
+    <HP>10</HP>
+    <Attack>3</Attack>
+    <Sprite>enemy_1</Sprite>
+  </Enemy>
+
+  <Enemy name="Imp">
+    <HP>5</HP>
+    <Attack>5</Attack>
+    <Sprite>enemy_3</Sprite>
+  </Enemy>
+
+  <Enemy name="EyeMonster">
+    <HP>30</HP>
+    <Attack>5</Attack>
+    <Sprite>enemy_4</Sprite>
+  </Enemy>
+ 
+</enemies>
