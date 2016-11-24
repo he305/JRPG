@@ -67,6 +67,8 @@
     <Compile Include="Assets\Scripts\BattleCreatureInfo.cs" />
     <Compile Include="Assets\Scripts\CameraController.cs" />
     <Compile Include="Assets\Scripts\PlayerInfo.cs" />
+    <Compile Include="Assets\Scripts\PlayerInfoContainer.cs" />
+    <Compile Include="Assets\Scripts\PlayerInfoController.cs" />
     <Compile Include="Assets\Scripts\PlayerMovement.cs" />
     <Compile Include="Assets\Tiled2Unity\Scripts\Runtime\ImportBehaviour.cs" />
     <Compile Include="Assets\Tiled2Unity\Scripts\Runtime\SortingLayerExposed.cs" />
@@ -78,6 +80,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\DB\enemyDB.xml" />
+    <None Include="Assets\DB\person.xml" />
     <None Include="Assets\Maps\%D0%9D%D0%BE%D0%B2%D1%8B%D0%B9 %D1%82%D0%B5%D0%BA%D1%81%D1%82%D0%BE%D0%B2%D1%8B%D0%B9 %D0%B4%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82.txt" />
     <None Include="Assets\Tiled2Unity\Imported\1.tiled2unity.xml" />
     <None Include="Assets\Tiled2Unity\Imported\_ReadMe.txt" />

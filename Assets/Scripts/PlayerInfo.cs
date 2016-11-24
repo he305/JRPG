@@ -1,15 +1,25 @@
 ﻿using UnityEngine;
 using System.Collections;
+using System;
+using System.Xml;
+using System.Xml.Serialization;
+using System.IO;
 
-public class PlayerInfo : MonoBehaviour {
-
+public class PlayerInfo
+{
+    [XmlAttribute("name")]
     public string name;
     public int HP;
     public int attack;
 
     public int currentHP;
 
-    public void Create(string name, int HP, int attack)
+    public PlayerInfo()
+    {
+
+    }
+
+    public PlayerInfo(string name, int HP, int attack)
     {
         this.name = name;
         this.HP = HP;
@@ -17,13 +27,5 @@ public class PlayerInfo : MonoBehaviour {
         currentHP = HP;
     }
 
-	// Use this for initialization
-	void Start () {
-	
-	}
-	
-	// Update is called once per frame
-	void Update () {
-	
-	}
+    
 }

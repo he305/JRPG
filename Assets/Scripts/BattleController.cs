@@ -27,6 +27,31 @@ public class BattleController : MonoBehaviour {
             this.actionType = actionType;
         }
 
+        public void StartAttackAnimation()
+        {
+            if (initiator.tag == "Player")
+            {
+                initiator.transform.position = Vector2.Lerp(initiator.transform.position, initiator.transform.position + new Vector3(0, 10, 0), 1);
+                
+            }
+            else
+            {
+                initiator.transform.position = Vector2.Lerp(initiator.transform.position, initiator.transform.position - new Vector3(0, 10, 0), 1);
+            }
+        }
+
+        public void StopAttackAnimation()
+        {
+            if (initiator.tag == "Player")
+            {
+                initiator.transform.position = Vector2.Lerp(initiator.transform.position, initiator.transform.position - new Vector3(0, 10, 0), 1);
+            }
+            else
+            {
+                initiator.transform.position = Vector2.Lerp(initiator.transform.position, initiator.transform.position + new Vector3(0, 10, 0), 1);
+            }
+        }
+
         public override string ToString()
         {
             return (initiator.name + "\t" + responder.name + "\t" + actionType);
@@ -55,9 +80,10 @@ public class BattleController : MonoBehaviour {
     //XMLFile
     public TextAsset xmlFile;
 
-    //Arrow
+    //Arrow + strike sprite
     public Sprite arrowSprite;
     GameObject arrow;
+    GameObject strike;
 
 
     //First action panel
@@ -82,6 +108,7 @@ public class BattleController : MonoBehaviour {
     // Use this for initialization
     void Start() {
 
+        strike = GameObject.Find("strike");
         currentBattleState = BattleState.PlayerState;
         players = GameObject.FindGameObjectsWithTag("Player").OrderBy(p => p.name).ToArray();
 
@@ -136,7 +163,6 @@ public class BattleController : MonoBehaviour {
 
     private void DoActions()
     {
-        GameObject.Find("HeroName").GetComponent<Text>().text = players[currentPlayerTurn].name;
         SetNewStyle(actions[currentMenuChoise].GetComponent<Text>());
 
         if (Input.GetKeyDown(KeyCode.DownArrow))
@@ -152,6 +178,12 @@ public class BattleController : MonoBehaviour {
             currentMenuChoise++;
 
             checkOutOfBounds(currentMenuChoise, actions);
+        }
+
+        //TEMPORARILY
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            Application.Quit();
         }
 
         if (Input.GetKeyDown(KeyCode.Space) && actions[currentMenuChoise].name.Equals("Attack"))
@@ -170,7 +202,7 @@ public class BattleController : MonoBehaviour {
                 enemyNames[i] = new GameObject(enemies[i].name);
                 enemyNames[i].transform.SetParent(enemyPanel.transform);
                 Text text = enemyNames[i].AddComponent<Text>();
-                text.text = enemies[i].name;
+                text.text = enemies[i].name.Substring(0, enemies[i].name.Length - 1);
                 text.font = (Font)Resources.GetBuiltinResource(typeof(Font), "Arial.ttf");
                 text.fontSize = 12;
                 text.color = Color.black;
@@ -299,6 +331,7 @@ public class BattleController : MonoBehaviour {
         for(int i = 0; i < enemyHPS.Length; i++)
         {
             enemyHPS[i] = new GameObject(enemies[i].name + "hp");
+            enemyHPS[i].transform.SetParent(enemies[i].transform);
 
             enemyHPS[i].layer = 5;
             TextMesh text = enemyHPS[i].AddComponent<TextMesh>();
@@ -307,7 +340,7 @@ public class BattleController : MonoBehaviour {
             
             text.text = "HP " + enemies[i].GetComponent<BattleCreatureInfo>().currentHP + "/" + enemies[i].GetComponent<BattleCreatureInfo>().HP;
             text.font = (Font)Resources.GetBuiltinResource(typeof(Font), "Arial.ttf");
-            text.fontSize = 30;
+            text.fontSize = 10;
             text.color = Color.black;
             text.fontStyle = FontStyle.Normal;
             text.alignment = TextAlignment.Left;
@@ -334,23 +367,31 @@ public class BattleController : MonoBehaviour {
 
         foreach (Action act in actionsQueue)
         {
-            PerformAction(act);
-            yield return new WaitForSeconds(1);
+            StartCoroutine(PerformAction(act));
+            yield return new WaitForSeconds(2);
         }
 
         NextTurn();
     }
 
-    void PerformAction(Action act)
+    IEnumerator PerformAction(Action act)
     {
-        //Check if initiator is already dead
-        if (act.initiator == null)
-            return;
-        
+        //Check if initiator or responder is already dead
+        if (act.initiator == null || act.responder == null)
+            yield break;
+
         int damage = 0;
+
         if (act.actionType == Action.ActionType.Attack)
         {
             damage = act.initiator.GetComponent<BattleCreatureInfo>().attack;
+
+            //Animation
+            act.StartAttackAnimation();
+            strike.transform.position = act.responder.transform.position;
+            yield return new WaitForSeconds(1);
+            strike.transform.position = new Vector3(0, 0, 0);
+            act.StopAttackAnimation();
         }
 
         act.responder.GetComponent<BattleCreatureInfo>().currentHP -= damage;
@@ -361,23 +402,25 @@ public class BattleController : MonoBehaviour {
             Destroy(GameObject.Find(act.responder.name + "hp"));
             Destroy(act.responder);
         }
+        
         UpdateHP(act.responder);
     }
 
     private void LoadInfoPanel()
     {
         GameObject infoPanel = GameObject.Find("InfoPanel");
+        GameObject infoPanelOriginal = GameObject.Find("InfoPanelOriginal");
 
         GameObject[] playersPanel = new GameObject[players.Length];
 
         for (int i = 0; i < playersPanel.Length; i++)
         {
-            playersPanel[i] = Instantiate(infoPanel, infoPanel.transform) as GameObject;
+            playersPanel[i] = Instantiate(infoPanelOriginal, infoPanel.transform) as GameObject;
             playersPanel[i].name = players[i].name;
 
             playersPanel[i].GetComponent<GridLayoutGroup>().padding.left = 3;
             playersPanel[i].GetComponent<GridLayoutGroup>().padding.top = 3;
-            playersPanel[i].GetComponent<GridLayoutGroup>().cellSize = new Vector2(100, 15);
+            playersPanel[i].GetComponent<GridLayoutGroup>().cellSize = new Vector2(100, 20);
 
             playersPanel[i].transform.SetParent(infoPanel.transform);
             playersPanel[i].GetComponent<Image>().color = Color.red;
@@ -388,9 +431,9 @@ public class BattleController : MonoBehaviour {
             Text name = textName.AddComponent<Text>();
             name.text = players[i].name;
             name.font = (Font)Resources.GetBuiltinResource(typeof(Font), "Arial.ttf");
-            name.fontSize = 10;
+            name.fontSize = 14;
             name.color = Color.black;
-            name.fontStyle = FontStyle.Normal;
+            name.fontStyle = FontStyle.Bold;
 
             GameObject textHP = new GameObject("InfoHPPlayer" + players[i].name);
             textHP.transform.SetParent(playersPanel[i].transform);
@@ -398,7 +441,7 @@ public class BattleController : MonoBehaviour {
             hp.text = ("HP\t" + players[i].GetComponent<BattleCreatureInfo>().currentHP + "/" + players[i].GetComponent<BattleCreatureInfo>().HP);
 
             hp.font = (Font)Resources.GetBuiltinResource(typeof(Font), "Arial.ttf");
-            hp.fontSize = 10;
+            hp.fontSize = 14;
             hp.color = Color.black;
             hp.fontStyle = FontStyle.Normal;
         }
@@ -436,10 +479,13 @@ public class BattleController : MonoBehaviour {
         currentPlayerTurn = 0;
         currentMenuChoise = 0;
 
+        GameObject.Find("HeroName").GetComponent<Text>().text = players[currentPlayerTurn].name;
+
     }
 
     private void ClearGUI()
     {
+        GameObject.Find("HeroName").GetComponent<Text>().text = "";
         currentMenuChoise = 10;
         Destroy(arrow);
         GameObject.Find("EnemyChoicePanel").GetComponent<Image>().enabled = false;
@@ -474,8 +520,16 @@ public class BattleController : MonoBehaviour {
         if (currentPlayerTurn == players.Length - 1)
         {
             currentBattleState = BattleState.EnemyState;
+            return;
         }
         currentPlayerTurn++;
+        GameObject.Find("HeroName").GetComponent<Text>().text = players[currentPlayerTurn].name;
+        currentPanelState = PanelState.Actions;
+        currentMenuChoise = 0;
+        foreach (GameObject act in actions)
+        {
+            act.GetComponent<Text>().enabled = true;
+        }
     }
     #endregion
 }
