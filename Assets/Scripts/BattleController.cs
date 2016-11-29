@@ -1,144 +1,109 @@
-﻿using System.Linq;
-using UnityEngine;
-using UnityEngine.UI;
-using System;
-using System.Xml;
+﻿using System.Collections;
 using System.Collections.Generic;
-using System.Collections;
+using System.Linq;
+using System.Xml;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
-public class BattleController : MonoBehaviour {
+public class BattleController : MonoBehaviour
+{
+    private readonly Color defaultColor = Color.black;
+    private readonly FontStyle defaultStyle = FontStyle.Normal;
+    private GameObject[] actions;
 
-    class Action
-    {
-        public enum ActionType
-        {
-            Attack,
-            Magic
-        }
-
-        public GameObject initiator { get; set; }
-        public GameObject responder { get; set; }
-        public ActionType actionType { get; set; }
-
-        public Action(GameObject initiator, GameObject responder, ActionType actionType)
-        {
-            this.initiator = initiator;
-            this.responder = responder;
-            this.actionType = actionType;
-        }
-
-        public void StartAttackAnimation()
-        {
-            if (initiator.tag == "Player")
-            {
-                initiator.transform.position = Vector2.Lerp(initiator.transform.position, initiator.transform.position + new Vector3(0, 10, 0), 1);
-                
-            }
-            else
-            {
-                initiator.transform.position = Vector2.Lerp(initiator.transform.position, initiator.transform.position - new Vector3(0, 10, 0), 1);
-            }
-        }
-
-        public void StopAttackAnimation()
-        {
-            if (initiator.tag == "Player")
-            {
-                initiator.transform.position = Vector2.Lerp(initiator.transform.position, initiator.transform.position - new Vector3(0, 10, 0), 1);
-            }
-            else
-            {
-                initiator.transform.position = Vector2.Lerp(initiator.transform.position, initiator.transform.position + new Vector3(0, 10, 0), 1);
-            }
-        }
-
-        public override string ToString()
-        {
-            return (initiator.name + "\t" + responder.name + "\t" + actionType);
-        }
-    }
-
-    enum BattleState
-    {
-        PlayerState,
-        EnemyState,
-        ActionState
-    };
-
-    enum PanelState
-    {
-        Actions,
-        Enemies
-    };
-
-    //Battle state
-    BattleState currentBattleState;
-
-    //Actions list
     private List<Action> actionsQueue = new List<Action>();
 
-    //XMLFile
-    public TextAsset xmlFile;
-
-    //Arrow + strike sprite
-    public Sprite arrowSprite;
-    GameObject arrow;
-    GameObject strike;
-
-
-    //First action panel
-    private int currentMenuChoise;
-    private GameObject[] actions;
-    private PanelState currentPanelState;
-
-    //Player + Enemy panel
-    private GameObject[] players;
-    private int currentPlayerTurn;
-    private GameObject[] enemies;
-    private GameObject[] enemyNames;
-
-
-    //Data for texts;
-    private Color defaultColor = Color.black;
-    private FontStyle defaultStyle = FontStyle.Normal;
+    private GameObject arrow;
 
     private Color choiceColor;
     private FontStyle choiceStyle;
 
-    // Use this for initialization
-    void Start() {
+    private BattleState currentBattleState;
 
-        strike = GameObject.Find("strike");
-        currentBattleState = BattleState.PlayerState;
-        players = GameObject.FindGameObjectsWithTag("Player").OrderBy(p => p.name).ToArray();
 
-        //PLAYER CREATION
-        //
-        //
-        foreach(GameObject player in players)
-        {
-            player.AddComponent<BattleCreatureInfo>().Create(player.name, 100, 20);
-        }
-        //TEMPORARILY USAGE
+    private int currentMenuChoise;
+    private PanelState currentPanelState;
+    private int currentPlayerTurn;
+    private GameObject[] enemies;
+    private GameObject[] enemyNames;
 
-        LoadInfoPanel();
-        currentPlayerTurn = 0;
-        GameObject.Find("HeroName").GetComponent<Text>().text = players[currentPlayerTurn].name;
+    private List<GameObject> players;
+    private GameObject strike;
+
+    public TextAsset xmlFile;
+
+    private void Start()
+    {
         LoadBattle();
 
-        currentPanelState = PanelState.Actions;
+        //Loading players
+        LoadPlayers();
 
-
+        //Loading misc and interface
+        LoadInfoPanel();
+        strike = GameObject.Find("strike");
+        arrow = GameObject.Find("arrow");
         actions = GameObject.FindGameObjectsWithTag("Actions").OrderBy(go => go.name).ToArray();
 
+
+        currentPanelState = PanelState.Actions;
+        currentBattleState = BattleState.PlayerState;
+        currentPlayerTurn = 0;
         currentMenuChoise = 0;
 
+        GameObject.Find("HeroName").GetComponent<Text>().text = players[currentPlayerTurn].name;
+
+        //Active style for text
         choiceColor = new Color(30, 190, 20, 255);
         choiceStyle = FontStyle.Bold;
     }
 
+    private void LoadPlayers()
+    {
+        var playerSprites = Resources.LoadAll<Sprite>("players");
+        players = new List<GameObject>();
+
+        var spawns = GameObject.FindGameObjectsWithTag("PlayerSpawn").OrderBy(sp => sp.name).ToArray();
+
+        for (var i = 0; i < playerSprites.Length; i++)
+        {
+            players.Add(new GameObject(playerSprites[i].name));
+            players[i].transform.SetParent(spawns[i].transform);
+            players[i].transform.position = spawns[i].transform.position;
+            players[i].transform.localScale = new Vector3(1.3f, 1.3f);
+
+            var renderer = players[i].AddComponent<SpriteRenderer>();
+            renderer.sortingOrder = 6;
+            renderer.sprite = playerSprites[i];
+
+            players[i].tag = "Player";
+
+            var info = GameObject.FindWithTag("MainCamera").GetComponent<SaveDataContorller>().GetPlayerInfo(i);
+
+            players[i].AddComponent<BattleCreatureInfo>().CreatePlayer(info.name,
+                info.HP,
+                info.attack,
+                info.currentHP);
+
+            var temp = Resources.Load<AnimationClip>("Animation/PlayerAttack");
+            var anim = players[i].AddComponent<Animation>();
+            anim.clip = temp;
+            anim.AddClip(temp, temp.name);
+            anim.playAutomatically = false;
+        }
+
+        for (var i = 0; i < players.Count; i++)
+        {
+            if (players[i].GetComponent<BattleCreatureInfo>().currentHP <= 0)
+            {
+                players.Remove(players[i]);
+            }
+        }
+    }
+
     // Update is called once per frame
-    void Update()
+    private void Update()
     {
         switch (currentBattleState)
         {
@@ -158,6 +123,9 @@ public class BattleController : MonoBehaviour {
                 break;
             case (BattleState.ActionState):
                 break;
+            case (BattleState.EndingState):
+                EndBattle();
+                break;
         }
     }
 
@@ -170,14 +138,14 @@ public class BattleController : MonoBehaviour {
             SetDefaultStyle(actions[currentMenuChoise].GetComponent<Text>());
             currentMenuChoise--;
 
-            checkOutOfBounds(currentMenuChoise, actions);
+            checkOutOfBounds(actions);
         }
         else if (Input.GetKeyDown(KeyCode.UpArrow))
         {
             SetDefaultStyle(actions[currentMenuChoise].GetComponent<Text>());
             currentMenuChoise++;
 
-            checkOutOfBounds(currentMenuChoise, actions);
+            checkOutOfBounds(actions);
         }
 
         //TEMPORARILY
@@ -188,38 +156,27 @@ public class BattleController : MonoBehaviour {
 
         if (Input.GetKeyDown(KeyCode.Space) && actions[currentMenuChoise].name.Equals("Attack"))
         {
-            GameObject enemyPanel = GameObject.Find("EnemyChoicePanel");
+            var enemyPanel = GameObject.Find("EnemyChoicePanel");
             enemyPanel.GetComponent<Image>().enabled = true;
             currentPanelState = PanelState.Enemies;
             enemies = GameObject.FindGameObjectsWithTag("Enemy");
             enemyNames = new GameObject[enemies.Length];
 
 
-
-            for (int i = 0; i < enemyNames.Length; i++)
+            for (var i = 0; i < enemyNames.Length; i++)
             {
-
                 enemyNames[i] = new GameObject(enemies[i].name);
                 enemyNames[i].transform.SetParent(enemyPanel.transform);
-                Text text = enemyNames[i].AddComponent<Text>();
+                var text = enemyNames[i].AddComponent<Text>();
                 text.text = enemies[i].name.Substring(0, enemies[i].name.Length - 1);
                 text.font = (Font)Resources.GetBuiltinResource(typeof(Font), "Arial.ttf");
                 text.fontSize = 12;
                 text.color = Color.black;
                 text.fontStyle = FontStyle.Normal;
                 currentMenuChoise = 0;
-
             }
 
-
-            //Create arrow
-            arrow = new GameObject("Arrow");
-            SpriteRenderer renderer = arrow.AddComponent<SpriteRenderer>();
-            renderer.sprite = arrowSprite;
-            renderer.sortingOrder = 10;
             arrow.transform.localScale = new Vector3(3, 3, 0);
-
-
             arrow.transform.SetParent(enemies[currentMenuChoise].transform);
             arrow.transform.position = enemies[currentMenuChoise].transform.position + new Vector3(0, 10, 0);
         }
@@ -234,7 +191,7 @@ public class BattleController : MonoBehaviour {
             SetDefaultStyle(enemyNames[currentMenuChoise].GetComponent<Text>());
             currentMenuChoise--;
 
-            checkOutOfBounds(currentMenuChoise, enemyNames);
+            checkOutOfBounds(enemyNames);
 
             arrow.transform.SetParent(enemies[currentMenuChoise].transform);
 
@@ -246,7 +203,7 @@ public class BattleController : MonoBehaviour {
             SetDefaultStyle(enemyNames[currentMenuChoise].GetComponent<Text>());
             currentMenuChoise++;
 
-            checkOutOfBounds(currentMenuChoise, enemyNames);
+            checkOutOfBounds(enemyNames);
 
             arrow.transform.SetParent(enemies[currentMenuChoise].transform.transform);
 
@@ -261,11 +218,16 @@ public class BattleController : MonoBehaviour {
             changePlayer();
         }
 
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            ReloadGUI();
+        }
 
-        checkOutOfBounds(currentMenuChoise, enemyNames);
+
+        checkOutOfBounds(enemyNames);
     }
 
-    private void checkOutOfBounds(int choice, GameObject[] array)
+    private void checkOutOfBounds(GameObject[] array)
     {
         if (currentMenuChoise < 0)
         {
@@ -279,66 +241,67 @@ public class BattleController : MonoBehaviour {
 
     private void LoadBattle()
     {
-        Sprite[] sprites = Resources.LoadAll<Sprite>("enemy");
+        var enemySprites = Resources.LoadAll<Sprite>("enemy");
 
-        int enemyCounter = UnityEngine.Random.Range(1, 5);
+        var enemyCounter = Random.Range(1, 5);
         enemies = new GameObject[enemyCounter];
 
-        XmlDocument xml = new XmlDocument();
+        var xml = new XmlDocument();
         xml.LoadXml(xmlFile.text);
-        XmlNodeList nodeList = xml.GetElementsByTagName("Enemy");
+        var nodeList = xml.GetElementsByTagName("Enemy");
 
-        for (int i = 0; i < enemies.Length; i++)
+        for (var i = 0; i < enemies.Length; i++)
         {
-            int numFromXML = UnityEngine.Random.Range(0, nodeList.Count);
-            enemies[i] = new GameObject(nodeList[numFromXML].Attributes["name"].Value + i);
+            var numFromXml = Random.Range(0, nodeList.Count);
+            enemies[i] = new GameObject(nodeList[numFromXml].Attributes["name"].Value + i);
             enemies[i].AddComponent<BattleCreatureInfo>();
 
             enemies[i].GetComponent<BattleCreatureInfo>().Create(enemies[i].name,
-                                                                 int.Parse(nodeList[numFromXML].SelectSingleNode("HP").InnerText),
-                                                                 int.Parse(nodeList[numFromXML].SelectSingleNode("Attack").InnerText));
+                int.Parse(nodeList[numFromXml].SelectSingleNode("HP").InnerText),
+                int.Parse(nodeList[numFromXml].SelectSingleNode("Attack").InnerText));
 
-            SpriteRenderer renderer = enemies[i].AddComponent<SpriteRenderer>();
+            var renderer = enemies[i].AddComponent<SpriteRenderer>();
             renderer.sortingOrder = 6;
 
-            Sprite sp = new Sprite();
+            var sp = new Sprite();
 
-            string text = nodeList[numFromXML].SelectSingleNode("Sprite").InnerText;
+            var text = nodeList[numFromXml].SelectSingleNode("Sprite").InnerText;
 
-            for (int j = 0; j < sprites.Length; j++)
+            foreach (var enemySprite in enemySprites)
             {
-                if (sprites[j].name.Equals(text))
+                if (enemySprite.name.Equals(text))
                 {
-                    sp = sprites[j];
+                    sp = enemySprite;
                 }
             }
 
             renderer.sprite = sp;
 
             enemies[i].transform.localScale = new Vector3(3, 3, 0);
-
         }
 
-        GameObject[] spawnAreas = GameObject.FindGameObjectsWithTag("Respawn").OrderBy(go => go.name).ToArray();
+        var spawnAreas = GameObject.FindGameObjectsWithTag("Respawn").OrderBy(go => go.name).ToArray();
 
-        for (int i = 0; i < enemies.Length; i++)
+        for (var i = 0; i < enemies.Length; i++)
         {
+            enemies[i].transform.SetParent(spawnAreas[i].transform);
             enemies[i].transform.position = spawnAreas[i].transform.position;
             enemies[i].tag = "Enemy";
         }
 
-        GameObject[] enemyHPS = new GameObject[enemies.Length];
-        for(int i = 0; i < enemyHPS.Length; i++)
+        var enemyHPS = new GameObject[enemies.Length];
+        for (var i = 0; i < enemyHPS.Length; i++)
         {
             enemyHPS[i] = new GameObject(enemies[i].name + "hp");
             enemyHPS[i].transform.SetParent(enemies[i].transform);
 
             enemyHPS[i].layer = 5;
-            TextMesh text = enemyHPS[i].AddComponent<TextMesh>();
+            var text = enemyHPS[i].AddComponent<TextMesh>();
 
             enemyHPS[i].GetComponent<MeshRenderer>().sortingOrder = 6;
-            
-            text.text = "HP " + enemies[i].GetComponent<BattleCreatureInfo>().currentHP + "/" + enemies[i].GetComponent<BattleCreatureInfo>().HP;
+
+            text.text = "HP " + enemies[i].GetComponent<BattleCreatureInfo>().currentHP + "/" +
+                        enemies[i].GetComponent<BattleCreatureInfo>().HP;
             text.font = (Font)Resources.GetBuiltinResource(typeof(Font), "Arial.ttf");
             text.fontSize = 10;
             text.color = Color.black;
@@ -346,13 +309,22 @@ public class BattleController : MonoBehaviour {
             text.alignment = TextAlignment.Left;
             enemyHPS[i].transform.position = enemies[i].transform.position - new Vector3(5, 13, 0);
         }
+
+        foreach (var gameObject in enemies)
+        {
+            var temp = Resources.Load<AnimationClip>("Animation/EnemyAttack");
+            var anim = gameObject.AddComponent<Animation>();
+            anim.clip = temp;
+            anim.AddClip(temp, temp.name);
+            anim.playAutomatically = false;
+        }
     }
 
     private void EnemyTurn()
     {
-        foreach(GameObject en in enemies)
+        foreach (var en in enemies)
         {
-            actionsQueue.Add(new Action(en, players[UnityEngine.Random.RandomRange(0, players.Length)], Action.ActionType.Attack));
+            actionsQueue.Add(new Action(en, players[Random.RandomRange(0, players.Count)], Action.ActionType.Attack));
         }
 
         currentBattleState = BattleState.ActionState;
@@ -360,13 +332,20 @@ public class BattleController : MonoBehaviour {
         StartCoroutine(PerformTurn());
     }
 
-    IEnumerator PerformTurn()
+    private IEnumerator PerformTurn()
     {
-        System.Random rnd = new System.Random();
+        ClearGUI();
+
+        var rnd = new System.Random();
         actionsQueue = actionsQueue.OrderBy(x => rnd.Next()).ToList();
 
-        foreach (Action act in actionsQueue)
+        foreach (var act in actionsQueue)
         {
+            //Check if initiator or responder is already dead
+            if (act.initiator == null || act.responder == null ||
+                act.initiator.GetComponent<BattleCreatureInfo>().currentHP <= 0)
+                continue;
+
             StartCoroutine(PerformAction(act));
             yield return new WaitForSeconds(2);
         }
@@ -374,13 +353,9 @@ public class BattleController : MonoBehaviour {
         NextTurn();
     }
 
-    IEnumerator PerformAction(Action act)
+    private IEnumerator PerformAction(Action act)
     {
-        //Check if initiator or responder is already dead
-        if (act.initiator == null || act.responder == null)
-            yield break;
-
-        int damage = 0;
+        var damage = 0;
 
         if (act.actionType == Action.ActionType.Attack)
         {
@@ -391,29 +366,33 @@ public class BattleController : MonoBehaviour {
             strike.transform.position = act.responder.transform.position;
             yield return new WaitForSeconds(1);
             strike.transform.position = new Vector3(0, 0, 0);
-            act.StopAttackAnimation();
         }
 
         act.responder.GetComponent<BattleCreatureInfo>().currentHP -= damage;
 
         if (act.responder.GetComponent<BattleCreatureInfo>().currentHP <= 0)
         {
-            Debug.Log(act.responder.name + "hp");
-            Destroy(GameObject.Find(act.responder.name + "hp"));
-            Destroy(act.responder);
+            if (act.responder.tag == "Player")
+                players.Remove(act.responder);
+
+            else
+            {
+                Destroy(GameObject.Find(act.responder.name + "hp"));
+                Destroy(act.responder);
+            }
         }
-        
+
         UpdateHP(act.responder);
     }
 
     private void LoadInfoPanel()
     {
-        GameObject infoPanel = GameObject.Find("InfoPanel");
-        GameObject infoPanelOriginal = GameObject.Find("InfoPanelOriginal");
+        var infoPanel = GameObject.Find("InfoPanel");
+        var infoPanelOriginal = GameObject.Find("InfoPanelOriginal");
 
-        GameObject[] playersPanel = new GameObject[players.Length];
+        var playersPanel = new GameObject[players.Count];
 
-        for (int i = 0; i < playersPanel.Length; i++)
+        for (var i = 0; i < playersPanel.Length; i++)
         {
             playersPanel[i] = Instantiate(infoPanelOriginal, infoPanel.transform) as GameObject;
             playersPanel[i].name = players[i].name;
@@ -426,19 +405,20 @@ public class BattleController : MonoBehaviour {
             playersPanel[i].GetComponent<Image>().color = Color.red;
 
 
-            GameObject textName = new GameObject("InfoNamePlayer");
+            var textName = new GameObject("InfoNamePlayer");
             textName.transform.SetParent(playersPanel[i].transform);
-            Text name = textName.AddComponent<Text>();
+            var name = textName.AddComponent<Text>();
             name.text = players[i].name;
             name.font = (Font)Resources.GetBuiltinResource(typeof(Font), "Arial.ttf");
             name.fontSize = 14;
             name.color = Color.black;
             name.fontStyle = FontStyle.Bold;
 
-            GameObject textHP = new GameObject("InfoHPPlayer" + players[i].name);
+            var textHP = new GameObject("InfoHPPlayer" + players[i].name);
             textHP.transform.SetParent(playersPanel[i].transform);
-            Text hp = textHP.AddComponent<Text>();
-            hp.text = ("HP\t" + players[i].GetComponent<BattleCreatureInfo>().currentHP + "/" + players[i].GetComponent<BattleCreatureInfo>().HP);
+            var hp = textHP.AddComponent<Text>();
+            hp.text = string.Format("HP\t{0}/{1}", players[i].GetComponent<BattleCreatureInfo>().currentHP,
+                players[i].GetComponent<BattleCreatureInfo>().HP);
 
             hp.font = (Font)Resources.GetBuiltinResource(typeof(Font), "Arial.ttf");
             hp.fontSize = 14;
@@ -451,24 +431,28 @@ public class BattleController : MonoBehaviour {
     {
         if (obj.tag == "Player")
         {
-            Text text = GameObject.Find("InfoHPPlayer" + obj.name).GetComponent<Text>();
-            text.text = "HP\t" + obj.GetComponent<BattleCreatureInfo>().currentHP + "/" + obj.GetComponent<BattleCreatureInfo>().HP;
+            var text = GameObject.Find("InfoHPPlayer" + obj.name).GetComponent<Text>();
+            text.text = string.Format("HP\t{0}/{1}", obj.GetComponent<BattleCreatureInfo>().currentHP,
+                obj.GetComponent<BattleCreatureInfo>().HP);
         }
         else
         {
-            TextMesh text = GameObject.Find(obj.name + "hp").GetComponent<TextMesh>();
-            text.text = "HP " + obj.GetComponent<BattleCreatureInfo>().currentHP + "/" + obj.GetComponent<BattleCreatureInfo>().HP;
+            var text = GameObject.Find(obj.name + "hp").GetComponent<TextMesh>();
+            text.text = string.Format("HP {0}/{1}", obj.GetComponent<BattleCreatureInfo>().currentHP,
+                obj.GetComponent<BattleCreatureInfo>().HP);
         }
     }
 
     private void NextTurn()
     {
-        if (GameObject.FindGameObjectsWithTag("Enemy").Length == 0)
+        if (GameObject.FindGameObjectsWithTag("Enemy").Length == 0 ||
+            GameObject.FindGameObjectsWithTag("Player").Length == 0)
         {
-            Application.Quit();
+            currentBattleState = BattleState.EndingState;
+            return;
         }
 
-        foreach (GameObject act in actions)
+        foreach (var act in actions)
         {
             act.GetComponent<Text>().enabled = true;
         }
@@ -480,28 +464,106 @@ public class BattleController : MonoBehaviour {
         currentMenuChoise = 0;
 
         GameObject.Find("HeroName").GetComponent<Text>().text = players[currentPlayerTurn].name;
-
     }
 
     private void ClearGUI()
     {
         GameObject.Find("HeroName").GetComponent<Text>().text = "";
-        currentMenuChoise = 10;
-        Destroy(arrow);
+        arrow.transform.position = new Vector2(0, 0);
+        arrow.transform.parent = null;
         GameObject.Find("EnemyChoicePanel").GetComponent<Image>().enabled = false;
-        
-        foreach (GameObject obj in enemyNames)
+
+        foreach (var obj in enemyNames)
         {
             Destroy(obj);
         }
 
-        foreach(GameObject act in actions)
+        foreach (var act in actions)
         {
             act.GetComponent<Text>().enabled = false;
         }
     }
 
+    private void ReloadGUI()
+    {
+        arrow.transform.position = new Vector2(0, 0);
+        GameObject.Find("EnemyChoicePanel").GetComponent<Image>().enabled = false;
+        foreach (var obj in enemyNames)
+        {
+            Destroy(obj);
+        }
+        currentPanelState = PanelState.Actions;
+        currentMenuChoise = 0;
+    }
+
+
+    private void EndBattle()
+    {
+        if (GameObject.FindGameObjectsWithTag("Player").Length == 0)
+        {
+            Application.Quit();
+        }
+        else
+        {
+            players = GameObject.FindGameObjectsWithTag("Player").ToList();
+            var pinfo = new List<PlayerInfo>(players.Count);
+            pinfo.AddRange(players.Select(t => new PlayerInfo(t.GetComponent<BattleCreatureInfo>().name,
+                t.GetComponent<BattleCreatureInfo>().HP,
+                t.GetComponent<BattleCreatureInfo>().attack,
+                t.GetComponent<BattleCreatureInfo>().currentHP)));
+
+            GameObject.FindGameObjectWithTag("MainCamera").GetComponent<SaveDataContorller>().ChangePlayerInfo(pinfo);
+            SceneManager.LoadScene("forest");
+        }
+    }
+
+    private class Action
+    {
+        public enum ActionType
+        {
+            Attack,
+            Magic
+        }
+
+        public Action(GameObject initiator, GameObject responder, ActionType actionType)
+        {
+            this.initiator = initiator;
+            this.responder = responder;
+            this.actionType = actionType;
+        }
+
+        public GameObject initiator { get; set; }
+        public GameObject responder { get; set; }
+        public ActionType actionType { get; set; }
+
+        public void StartAttackAnimation()
+        {
+            //initiator.transform.position = initiator.transform.localPosition;
+            initiator.GetComponent<Animation>().Play();
+        }
+
+        public override string ToString()
+        {
+            return (initiator.name + "\t" + responder.name + "\t" + actionType);
+        }
+    }
+
+    private enum BattleState
+    {
+        PlayerState,
+        EnemyState,
+        ActionState,
+        EndingState
+    };
+
+    private enum PanelState
+    {
+        Actions,
+        Enemies
+    };
+
     #region Служебные методы
+
     private void SetDefaultStyle(Text t)
     {
         t.fontStyle = defaultStyle;
@@ -517,7 +579,7 @@ public class BattleController : MonoBehaviour {
     private void changePlayer()
     {
         ClearGUI();
-        if (currentPlayerTurn == players.Length - 1)
+        if (currentPlayerTurn == players.Count - 1)
         {
             currentBattleState = BattleState.EnemyState;
             return;
@@ -526,10 +588,11 @@ public class BattleController : MonoBehaviour {
         GameObject.Find("HeroName").GetComponent<Text>().text = players[currentPlayerTurn].name;
         currentPanelState = PanelState.Actions;
         currentMenuChoise = 0;
-        foreach (GameObject act in actions)
+        foreach (var act in actions)
         {
             act.GetComponent<Text>().enabled = true;
         }
     }
+
     #endregion
 }

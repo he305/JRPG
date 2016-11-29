@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<save xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <playerInfoContainer>
+    <PlayerInfo name="Billy">
+      <attack>20</attack>
+      <currentHP>79</currentHP>
+      <HP>100</HP>
+    </PlayerInfo>
+    <PlayerInfo name="Yarik">
+      <attack>30</attack>
+      <currentHP>58</currentHP>
+      <HP>100</HP>
+    </PlayerInfo>
+  </playerInfoContainer>
+  <sceneContainer>
+    <SceneInfo name="forest">
+      <playerPosition>
+        <x>131.018509</x>
+        <y>-336.013</y>
+        <z>0</z>
+      </playerPosition>
+    </SceneInfo>
+  </sceneContainer>
+</save>

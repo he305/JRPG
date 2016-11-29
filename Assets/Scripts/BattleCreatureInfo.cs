@@ -1,13 +1,13 @@
 ﻿using UnityEngine;
-using System.Collections;
 
-public class BattleCreatureInfo : MonoBehaviour {
-
-    public string name;
-    public int HP;
+public class BattleCreatureInfo : MonoBehaviour
+{
     public int attack;
 
     public int currentHP;
+    public int HP;
+
+    public string name;
 
     public void Create(string name, int HP, int attack)
     {
@@ -16,16 +16,26 @@ public class BattleCreatureInfo : MonoBehaviour {
         this.attack = attack;
         currentHP = HP;
     }
-	// Use this for initialization
-	void Start ()
+
+    public void CreatePlayer(string name, int HP, int attack, int currentHP)
     {
-	
-	}
-	
-	// Update is called once per frame
-	void Update () {
-	
-	}
+        this.name = name;
+        this.HP = HP;
+        this.attack = attack;
+        this.currentHP = currentHP;
+    }
+
+    // Use this for initialization
+    private void Start()
+    {
+    }
+
+    // Update is called once per frame
+    private void Update()
+    {
+        if (currentHP < 0)
+            currentHP = 0;
+    }
 
     public override string ToString()
     {

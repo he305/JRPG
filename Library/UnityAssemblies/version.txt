@@ -1,5 +1,5 @@
 5.4.3f1:2.8.0.0
-StandaloneWindows
+WebGL
 D:/Program Files/Unity/Editor/Data/Managed/UnityEngine.dll
 D:/Program Files/Unity/Editor/Data/UnityExtensions/Unity/GUISystem/UnityEngine.UI.dll
 D:/Program Files/Unity/Editor/Data/UnityExtensions/Unity/Networking/UnityEngine.Networking.dll
@@ -11,5 +11,6 @@ D:/Program Files/Unity/Editor/Data/UnityExtensions/Unity/GUISystem/Editor/UnityE
 D:/Program Files/Unity/Editor/Data/UnityExtensions/Unity/Networking/Editor/UnityEditor.Networking.dll
 D:/Program Files/Unity/Editor/Data/UnityExtensions/Unity/TreeEditor/Editor/UnityEditor.TreeEditor.dll
 D:/Program Files/Unity/Editor/Data/Managed/UnityEditor.Graphs.dll
+D:/Program Files/Unity/Editor/Data/PlaybackEngines/WebGLSupport/UnityEditor.WebGL.Extensions.dll
 D:/Program Files/Unity/Editor/Data/PlaybackEngines/windowsstandalonesupport/UnityEditor.WindowsStandalone.Extensions.dll
 C:/Program Files (x86)/Microsoft Visual Studio Tools for Unity/2015/Editor/SyntaxTree.VisualStudio.Unity.Bridge.dll
